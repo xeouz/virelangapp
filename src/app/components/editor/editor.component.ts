@@ -1,4 +1,6 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, AfterViewInit, ElementRef, ViewChild } from '@angular/core';
+
+import * as ace from "ace-builds"
 
 import { loadMainModule, compileSourceCodeFromAPI, instantiateOutputFromAPI, setSourceCode, getLLVMIROutput } from './vire-js/vire'
 
@@ -8,16 +10,24 @@ import { loadMainModule, compileSourceCodeFromAPI, instantiateOutputFromAPI, set
   styleUrls: ['./editor.component.scss']
 })
 export class EditorComponent implements OnInit {
-  pre_code: string="func main() returns int{}";
+  pre_code: string="extern puti(n: int) returns int;\n\nfunc main() returns int\n{\n\tputi(42);\n}\n";
   console_output: string="";
+
+  @ViewChild("editor") private editor: ElementRef<HTMLElement> = {} as ElementRef;
 
   constructor() {  }
 
   ngOnInit(): void {
-
+    
   }
 
-  log(event:any, txt:string) {
-    console.log('ace event', event, txt);
+  ngAfterViewInit(): void {
+    ace.config.set("fontSize", "14px");
+    ace.config.set('basePath', 'https://unpkg.com/ace-builds@1.4.12/src-noconflict');
+
+    const aceEditor = ace.edit(this.editor.nativeElement);
+    aceEditor.session.setValue(this.pre_code);
+
+    aceEditor.setTheme('ace/theme/tomorrow_night');
   }
 }

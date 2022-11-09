@@ -8,8 +8,6 @@ import { TopbarComponent } from './components/topbar/topbar.component';
 import { EditorComponent } from './components/editor/editor.component';
 import { HttpClientModule } from '@angular/common/http';
 
-import { AceModule } from 'ngx-ace-wrapper';
-
 @NgModule({
   declarations: [
     AppComponent,
@@ -18,7 +16,6 @@ import { AceModule } from 'ngx-ace-wrapper';
     EditorComponent,
   ],
   imports: [
-    AceModule,
     BrowserModule,
     AppRoutingModule,
     HttpClientModule,

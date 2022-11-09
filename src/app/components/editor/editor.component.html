@@ -13,9 +13,6 @@
     </div>
 
     <div class="text-left md:text-base max-w-screen-lg w-7/12">
-        <p class="px-3 py-1 font-bold font-['Consolas'] md:text-2xl underline underline-offset-4">
-            Source Code: 
-        </p>
         <!--
         <div id="editor-content" class="bg-transparent outline-none resize-none overflow-x-hidden overflow-y-auto
                     align-middle w-full px-3 mt-2 font-['Cascadia_Code']" contenteditable spellcheck="false">
@@ -25,21 +22,11 @@
             </div>
         </div>
         -->
-        <ace style="height:200px"
-            [disabled]="false" 
-            [mode]="'html'"
-            [theme]="'clouds'"
-            [config]="{}"
-            [(value)]="pre_code"
-            (blur)="log($event, 'blur')" 
-            (focus)="log($event, 'focus')" 
-            (copy)="log($event, 'copy')" 
-            (paste)="log($event, 'paste')" 
-            (change)="log($event, 'change')"
-            (changeSession)="log($event, 'changeSession')"
-            (changeCursor)="log($event, 'changeCursor')"
-            (changeSelection)="log($event, 'changeSelection')">
-        </ace>
+        <div
+            class="app-ace-editor rounded-sm"
+            #editor
+            style="width: 100%;height: 100%;"
+        ></div>
 
     </div>
     
