@@ -15,6 +15,8 @@ export class EditorComponent implements OnInit {
 
   @ViewChild("editor") private editor: ElementRef<HTMLElement> = {} as ElementRef;
 
+  aceEditor: ace.Ace.Editor = {} as ace.Ace.Editor;
+
   constructor() {  }
 
   ngOnInit(): void {
@@ -25,9 +27,13 @@ export class EditorComponent implements OnInit {
     ace.config.set("fontSize", "14px");
     ace.config.set('basePath', 'https://unpkg.com/ace-builds@1.4.12/src-noconflict');
 
-    const aceEditor = ace.edit(this.editor.nativeElement);
-    aceEditor.session.setValue(this.pre_code);
+    this.aceEditor = ace.edit(this.editor.nativeElement);
+    this.aceEditor.session.setValue(this.pre_code);
 
-    aceEditor.setTheme('ace/theme/tomorrow_night');
+    this.aceEditor.setTheme('ace/theme/tomorrow_night');
+  }
+
+  compile(): void {
+    
   }
 }

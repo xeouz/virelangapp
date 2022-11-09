@@ -1,43 +1,19 @@
-<div class="fixed top-[5rem] left-[5rem] h-[calc(100%-7rem)] w-[calc(100%-6rem)] rounded-lg
-            bg-gray-800 text-gray-300 border-gray-700 border-2
+<div class="fixed top-[5rem] left-[5rem] h-[calc(100%-7rem)] w-[93%] rounded-lg
+            bg-gray-800 text-gray-300 border-gray-500 border-2
             divide-x-2 divide-gray-700
-            flex flex-row
+            flex flex-wrap
             shadow-lg">
-
-    <div class="text-right text-base font-['Cascadia_Code'] ml-10 mr-3">
-        <!--
-        <p *ngFor="let i of [].constructor(lines.length); let indx = index" class="flex flex-col mt-1 align-middle">
-            
-        </p>
-        -->
-    </div>
-
-    <div class="text-left md:text-base max-w-screen-lg w-7/12">
-        <!--
-        <div id="editor-content" class="bg-transparent outline-none resize-none overflow-x-hidden overflow-y-auto
-                    align-middle w-full px-3 mt-2 font-['Cascadia_Code']" contenteditable spellcheck="false">
-            <div>
-                {{pre_code}}
-                <br>
-            </div>
-        </div>
-        -->
+    
+    <div class="text-left md:text-base min-w-[25ch] flex-[70%] max-h-full h-auto" (click)="compile()">
         <div
-            class="app-ace-editor rounded-sm"
+            class="app-ace-editor rounded-lg border-solid border-2 border-grey-900"
             #editor
             style="width: 100%;height: 100%;"
         ></div>
-
-    </div>
-    
-
-    <div class="text-left md:text-base font-['Consolas']">
-        <p class="px-3 py-1 font-bold md:text-2xl underline underline-offset-4">
-            Console: 
-        </p>
-        <p class="my-1 mx-5">
-            {{console_output}}
-        </p>
     </div>
 
+    <div class="rounded-lg max-h-full h-auto min-w-[15ch] flex-[30%] overflow-y-auto
+            bg-grey-900 font-semibold text-base p-2 font-['Consolas']">
+        <p class="whitespace-pre-wrap">{{console_output}}</p>
+    </div>
 </div>
