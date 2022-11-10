@@ -4,7 +4,7 @@
             flex flex-wrap
             shadow-lg">
     
-    <div class="text-left md:text-base min-w-[25ch] flex-[70%] max-h-full h-auto" (click)="compile()">
+    <div class="text-left md:text-base min-w-[25ch] flex-[70%] max-h-full h-auto">
         <div
             class="app-ace-editor rounded-lg border-solid border-2 border-grey-900"
             #editor
@@ -13,7 +13,7 @@
     </div>
 
     <div class="rounded-lg max-h-full h-auto min-w-[15ch] flex-[30%] overflow-y-auto
-            bg-grey-900 font-semibold text-base p-2 font-['Consolas']">
+            bg-grey-900 font-semibold text-base p-2 font-['Consolas']" (click)="compile()">
         <p class="whitespace-pre-wrap">{{console_output}}</p>
     </div>
 </div>

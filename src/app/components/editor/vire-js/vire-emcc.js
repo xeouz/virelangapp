@@ -1,6 +1,12 @@
-import createGlobalModuleJS from "./VIRELANG";
+import createGlobalModule from "./VIRELANG";
+import { setPath as setPathJS } from "./VIRELANG";
 
-export async function createGlobalModule()
+export async function instantiateGlobalModule()
 {
-    return await createGlobalModuleJS();
+    return await createGlobalModule();
+}
+
+export function setPath(path)
+{
+    setPathJS(path);
 }

@@ -1,5 +1,16 @@
 {
   "projects": {
-    "default": "virelang-app"
-  }
+    "default": "vire-lang",
+    "virelangapp": "vire-lang"
+  },
+  "targets": {
+    "vire-lang": {
+      "hosting": {
+        "virelangapp": [
+          "vire-lang"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }

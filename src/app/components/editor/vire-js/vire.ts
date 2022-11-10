@@ -1,7 +1,7 @@
-import { createGlobalModule } from "./vire-emcc"
+import { instantiateGlobalModule, setPath } from "./vire-emcc"
 
-let Module:any;
-let GlobalVireAPI:any;
+let Module: any;
+let GlobalVireAPI: any;
 
 const importObject:WebAssembly.Imports = {
     env:{
@@ -12,8 +12,27 @@ const importObject:WebAssembly.Imports = {
     }
 }
 
-export async function loadMainModule(wasm: string, input_code:string = "", target_triple:string = "wasm32", _async_callback:Function = ()=>{}) {
-    Module=await createGlobalModule();
+export function moduleIsLoaded(): boolean {
+    if(typeof Module == "object")
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+export function resetModule(): void {
+    Module=undefined;
+}
+
+export function setWASMPath(path: string = "./"): void {
+    setPath(path);
+}
+
+export async function loadMainModule(input_code:string = "", target_triple:string = "wasm32", _async_callback:Function = ()=>{},) {
+    Module=await instantiateGlobalModule();
     GlobalVireAPI=Module.VireAPI.loadFromText(input_code, target_triple);
 
     await _async_callback();
@@ -44,6 +63,5 @@ export async function instantiateOutputFromAPI() :Promise<WebAssembly.WebAssembl
 
 export async function setSourceCode(input_code:string) {
     GlobalVireAPI.setSourceCode(input_code);
-    console.log(Module);
     GlobalVireAPI.resetAST();
 }

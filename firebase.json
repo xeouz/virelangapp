@@ -16,7 +16,7 @@
     "rewrites": [
       {
         "source": "**",
-        "destination": "/index.html"
+        "destination": "/dist/virelangapp/index.html"
       }
     ]
   },
