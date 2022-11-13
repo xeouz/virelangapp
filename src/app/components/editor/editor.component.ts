@@ -1,14 +1,10 @@
 import { Component, OnInit, AfterViewInit, ElementRef, ViewChild } from '@angular/core';
 
-import { Cons, Observable } from 'rxjs';
-import { HttpClient, HttpResponse } from '@angular/common/http';
 
-import * as ace from "ace-builds"
-
-import './vire-js/vire'
-import { compileSourceCodeFromAPI, instantiateOutputFromAPI, loadMainModule, moduleIsLoaded, resetModule, setSourceCode, setWASMPath } from './vire-js/vire';
+import { compileSourceCodeFromAPI, getLLVMIROutput, getModule, instantiateOutputFromAPI, isCompiled, loadMainModule, moduleIsLoaded, resetModule, setModule, setSourceCode, setWASMPath } from './vire-js/vire';
+import { WasmFetchService } from 'src/app/services/wasm-fetch.service';
 import { setPath } from './vire-js/vire-emcc';
-import { Console } from 'console';
+import * as ace from "ace-builds";
 
 @Component({
   selector: 'app-editor',
@@ -18,19 +14,23 @@ import { Console } from 'console';
 export class EditorComponent implements OnInit {
   pre_code: string="extern puti(n: int) returns int;\n\nfunc main() returns int\n{\n\tputi(42);\n}\n";
   console_output: string="";
-  old_console_log=window.console.log;
+  console_log_func: Function = ()=>{};
+  console_log_capture: Array<any> = [];
   
-  readyForCompilation: boolean=false;
+  // Compilation Variables
+  readyForCompilation: boolean = false;
+  wasm_url: string = "";
+  wasm_db: IDBOpenDBRequest = {} as IDBOpenDBRequest;
 
   @ViewChild("editor") private editor: ElementRef<HTMLElement> = {} as ElementRef;
 
   aceEditor: ace.Ace.Editor = {} as ace.Ace.Editor;
 
-  constructor(private http: HttpClient) {  }
+  constructor(private fetch_service: WasmFetchService) {  }
 
-  ngOnInit(): void {
-    setWASMPath("/assets/");
-    this.console_output="Click on the this Console to compiled your Code";
+  ngOnInit() {
+    setPath('/');
+    this.console_output="Click on the this Console to compile your Code";
   }
 
   ngAfterViewInit(): void {
@@ -47,9 +47,14 @@ export class EditorComponent implements OnInit {
     return this.aceEditor.getValue();
   }
 
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // WebAssembly Loading and Compilation
   async initiateCompilation(): Promise<void> {
     if(!moduleIsLoaded())
     {
+      let wasm_url=await this.fetch_service.getURL("VIRELANG.wasm");
+      setPath(wasm_url);
+
       await loadMainModule(this.getEditorContent(), "wasm32", async()=>{
         setSourceCode(this.getEditorContent());
         this.readyForCompilation=moduleIsLoaded();
@@ -60,18 +65,25 @@ export class EditorComponent implements OnInit {
   }
 
   async compile(): Promise<void> {
-    this.console_output="Vire Version 3\n(WARNING: This is an early prototype, errors are not shown in the console as of now)\n___\nCompiling Code...\n";
+    // this.console_output="Vire Version 3\n(WARNING: This is an early prototype, errors are not shown in the console as of now)\n___\n> Compiling Code...\n";
+    this.console_output="";
     await this.initiateCompilation();
     resetModule();
-
+    
     await compileSourceCodeFromAPI();
+    
+    if(!isCompiled())
+    {
+      this.console_output+="> Could not compile code. Errors will be displayed here in further updates\n";
+      return;
+    }
+
     let m=await instantiateOutputFromAPI();
     
-    this.console_output+="Compiled to WASM, Calling main function...\n";
-    const main_=m.instance.exports['main'] as CallableFunction;
+    this.console_output+="> Compiled to WASM, Calling main function...\n";
+    const main_=m.instance.exports['_main'] as CallableFunction;
 
     let def_log=console.log.bind(console);
-
     let consoleLogCapture: Array<any> = [];
     console.log = function () {
       consoleLogCapture.push(Array.from(arguments));
@@ -80,8 +92,7 @@ export class EditorComponent implements OnInit {
     main_();
 
     console.log=def_log;
-    
-    this.console_output+="Output: \n\n"
+    this.console_output+="\n"
     for(let i of consoleLogCapture)
     {
       this.console_output+=(String(i[0]))+"\n";

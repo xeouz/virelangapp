@@ -1,19 +1,20 @@
 import { Injectable } from '@angular/core';
+import { AngularFireStorage } from '@angular/fire/compat/storage';
 
-import { AngularFireStorage, AngularFireStorageReference, AngularFireUploadTask } from '@angular/fire/compat/storage'
 import { getBytes, getDownloadURL, getStorage, ref } from '@angular/fire/storage';
 
 @Injectable({
   providedIn: 'root'
 })
 export class WasmFetchService {
-  constructor(public afStorage: AngularFireStorage) { }
+  constructor(private store: AngularFireStorage) { }
 
-  async downloadWebAssembly(event: any)
+  async getURL(file_name: string = "VIRELANG.wasm"): Promise<string>
   {
     const storage=getStorage();
-    let bytes=await getBytes(ref(storage, 'vire-wasm/VIRELANG.wasm.gz'));
+    const gs_ref=ref(storage, 'vire-wasm/'+file_name);
+    let url=await getDownloadURL(gs_ref);
 
-
+    return url;
   }
 }

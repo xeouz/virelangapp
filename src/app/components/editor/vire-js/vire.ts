@@ -2,12 +2,13 @@ import { instantiateGlobalModule, setPath } from "./vire-emcc"
 
 let Module: any;
 let GlobalVireAPI: any;
+let is_compiled: boolean = false;
 
 const importObject:WebAssembly.Imports = {
     env:{
         puti: (n:number)=>{console.log(n)},
         __linear_memory:new WebAssembly.Memory({initial: 256, maximum:256}),
-        __stack_pointer:new WebAssembly.Global({value: 'i32', mutable: true}, 16),
+        __stack_pointer:new WebAssembly.Global({value: 'i32', mutable: true}, 1024),
         __indirect_function_table:new WebAssembly.Table({initial:2, element:'anyfunc'})
     }
 }
@@ -22,9 +23,18 @@ export function moduleIsLoaded(): boolean {
         return false;
     }
 }
-
+export function getModule(): any {
+    return Module;
+}
+export function setModule(m: any) : void {
+    Module=m;
+}
+export function isCompiled(): boolean {
+    return is_compiled;
+}
 export function resetModule(): void {
     Module=undefined;
+    is_compiled=false;
 }
 
 export function setWASMPath(path: string = "./"): void {
@@ -39,9 +49,32 @@ export async function loadMainModule(input_code:string = "", target_triple:strin
 }
 
 export async function compileSourceCodeFromAPI() :Promise<void> {
-    GlobalVireAPI.ParseSourceModule();
-    GlobalVireAPI.VerifySourceModule();
-    GlobalVireAPI.CompileSourceModule("", false);
+    let success: boolean;
+
+    try
+    {
+        success=GlobalVireAPI.ParseSourceModule();
+        if(!success)
+        {
+            return;
+        }
+
+        GlobalVireAPI.VerifySourceModule();
+
+        if(!success)
+        {
+            return;
+        }
+
+        GlobalVireAPI.CompileSourceModule("", false);
+    }
+    catch
+    {
+        is_compiled=false;
+        return;
+    }
+
+    is_compiled=true;
 }
 
 export async function getLLVMIROutput(): Promise<string> {
