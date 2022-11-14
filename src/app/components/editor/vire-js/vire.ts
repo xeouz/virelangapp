@@ -36,6 +36,10 @@ export function resetModule(): void {
     Module=undefined;
     is_compiled=false;
 }
+export function resetAPI(source_code: string="", target_triple: string = "wasm32"): void {
+    GlobalVireAPI=Module.VireAPI.loadFromText(source_code, target_triple);
+    is_compiled=false;
+}
 
 export function setWASMPath(path: string = "./"): void {
     setPath(path);
@@ -48,32 +52,23 @@ export async function loadMainModule(input_code:string = "", target_triple:strin
     await _async_callback();
 }
 
-export async function compileSourceCodeFromAPI() :Promise<void> {
+export async function compileSourceCodeFromAPI(): Promise<void> {
     let success: boolean;
 
-    try
+    success=GlobalVireAPI.ParseSourceModule();
+    if(!success)
     {
-        success=GlobalVireAPI.ParseSourceModule();
-        if(!success)
-        {
-            return;
-        }
-
-        GlobalVireAPI.VerifySourceModule();
-
-        if(!success)
-        {
-            return;
-        }
-
-        GlobalVireAPI.CompileSourceModule("", false);
-    }
-    catch
-    {
-        is_compiled=false;
         return;
     }
 
+    GlobalVireAPI.VerifySourceModule();
+
+    if(!success)
+    {
+        return;
+    }
+
+    GlobalVireAPI.CompileSourceModule("", false);
     is_compiled=true;
 }
 
@@ -92,9 +87,4 @@ export async function instantiateOutputFromAPI() :Promise<WebAssembly.WebAssembl
 
     let module=await WebAssembly.instantiate(arr, importObject);
     return module;
-}
-
-export async function setSourceCode(input_code:string) {
-    GlobalVireAPI.setSourceCode(input_code);
-    GlobalVireAPI.resetAST();
 }

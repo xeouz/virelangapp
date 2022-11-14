@@ -1,7 +1,7 @@
 import { Component, OnInit, AfterViewInit, ElementRef, ViewChild } from '@angular/core';
 
 
-import { compileSourceCodeFromAPI, getLLVMIROutput, getModule, instantiateOutputFromAPI, isCompiled, loadMainModule, moduleIsLoaded, resetModule, setModule, setSourceCode, setWASMPath } from './vire-js/vire';
+import { compileSourceCodeFromAPI, getLLVMIROutput, getModule, instantiateOutputFromAPI, isCompiled, loadMainModule, moduleIsLoaded, resetAPI, resetModule, setModule, setWASMPath } from './vire-js/vire';
 import { WasmFetchService } from 'src/app/services/wasm-fetch.service';
 import { setPath } from './vire-js/vire-emcc';
 import * as ace from "ace-builds";
@@ -52,11 +52,11 @@ export class EditorComponent implements OnInit {
   async initiateCompilation(): Promise<void> {
     if(!moduleIsLoaded())
     {
+      this.console_output+="> Fetching the Compiler from Firebase\n"
       let wasm_url=await this.fetch_service.getURL("VIRELANG.wasm");
       setPath(wasm_url);
 
       await loadMainModule(this.getEditorContent(), "wasm32", async()=>{
-        setSourceCode(this.getEditorContent());
         this.readyForCompilation=moduleIsLoaded();
       });
     }
@@ -66,10 +66,10 @@ export class EditorComponent implements OnInit {
 
   async compile(): Promise<void> {
     // this.console_output="Vire Version 3\n(WARNING: This is an early prototype, errors are not shown in the console as of now)\n___\n> Compiling Code...\n";
-    this.console_output="";
+    this.console_output="> Compiling Code\n";
     await this.initiateCompilation();
-    resetModule();
-    
+
+    resetAPI(this.getEditorContent(), "wasm32");
     await compileSourceCodeFromAPI();
     
     if(!isCompiled())
