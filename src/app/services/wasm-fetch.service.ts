@@ -17,4 +17,13 @@ export class WasmFetchService {
 
     return url;
   }
+
+  async downloadURL(file_name: string = "VIRELANG.wasm"): Promise<ArrayBuffer>
+  {
+    const storage=getStorage();
+    const gs_ref=ref(storage, 'vire-wasm/'+file_name);
+    let bytes=await getBytes(gs_ref);
+
+    return bytes;
+  }
 }

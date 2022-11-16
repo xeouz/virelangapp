@@ -1,10 +1,16 @@
 import { Component, OnInit, AfterViewInit, ElementRef, ViewChild } from '@angular/core';
 
-
-import { compileSourceCodeFromAPI, getLLVMIROutput, getModule, instantiateOutputFromAPI, isCompiled, loadMainModule, moduleIsLoaded, resetAPI, resetModule, setModule, setWASMPath } from './vire-js/vire';
+import { CompileSourceCode, getCompiledIR, InstantiateCompiledOutput, is_compiled, LoadMainModule, isModuleLoaded, ResetAPI, Module} from './vire-js/vire';
 import { WasmFetchService } from 'src/app/services/wasm-fetch.service';
-import { setPath } from './vire-js/vire-emcc';
+import { SetWASMPath } from './vire-js/vire-emcc';
+import { cache_db, WasmBinary } from './vire-js/cache-db'
+
 import * as ace from "ace-builds";
+import 'brace';
+import 'brace/ext/language_tools';
+
+import { liveQuery } from 'dexie';
+import { gunzip } from 'zlib';
 
 @Component({
   selector: 'app-editor',
@@ -12,7 +18,8 @@ import * as ace from "ace-builds";
   styleUrls: ['./editor.component.scss']
 })
 export class EditorComponent implements OnInit {
-  pre_code: string="extern puti(n: int) returns int;\n\nfunc main() returns int\n{\n\tputi(42);\n}\n";
+  todoLists$ = liveQuery(() => cache_db.wasm_cache_table.toArray());
+  pre_code: string="extern puti(n: int);\n\nputi(42);\n";
   console_output: string="";
   console_log_func: Function = ()=>{};
   console_log_capture: Array<any> = [];
@@ -29,11 +36,12 @@ export class EditorComponent implements OnInit {
   constructor(private fetch_service: WasmFetchService) {  }
 
   ngOnInit() {
-    setPath('/');
+    SetWASMPath('/');
     this.console_output="Click on the this Console to compile your Code";
   }
 
   ngAfterViewInit(): void {
+    ace.require("ace/ext/language_tools");
     ace.config.set("fontSize", "14px");
     ace.config.set('basePath', 'https://unpkg.com/ace-builds@1.4.12/src-noconflict');
 
@@ -41,6 +49,11 @@ export class EditorComponent implements OnInit {
     this.aceEditor.session.setValue(this.pre_code);
 
     this.aceEditor.setTheme('ace/theme/tomorrow_night');
+
+    this.aceEditor.setOptions({
+      enableBasicAutocompletion: true,
+      enableLiveAutocompletion: true,
+    })
   }
 
   getEditorContent(): string {
@@ -50,18 +63,54 @@ export class EditorComponent implements OnInit {
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // WebAssembly Loading and Compilation
   async initiateCompilation(): Promise<void> {
-    if(!moduleIsLoaded())
+    if(!isModuleLoaded())
     {
-      this.console_output+="> Fetching the Compiler from Firebase\n"
-      let wasm_url=await this.fetch_service.getURL("VIRELANG.wasm");
-      setPath(wasm_url);
+      // Try to load from IndexedDB Cache
+      await cache_db.wasm_cache_table.clear();
+      let cnt=await cache_db.wasm_cache_table.count();
+      
+      let wasm_bytes: ArrayBuffer={} as ArrayBuffer;
+      let wasm_url: string="";
+      if(cnt==0)
+      {
+        // Fetch from Firebase Storage
+        this.console_output+="> Fetching the Compiler from Firebase\n"
+        let wasm_bytes_zipped=await this.fetch_service.downloadURL("VIRELANG.wasm.gz");
 
-      await loadMainModule(this.getEditorContent(), "wasm32", async()=>{
-        this.readyForCompilation=moduleIsLoaded();
+        gunzip(wasm_bytes_zipped, (errs, buff:ArrayBuffer)=>{
+          wasm_bytes=buff;
+        });
+
+        await cache_db.wasm_cache_table.clear();
+        await cache_db.wasm_cache_table.put({
+          bin: wasm_bytes,
+        });
+      }
+      else
+      {
+        let fetch_req=await cache_db.wasm_cache_table.get(0);
+        wasm_bytes=fetch_req!.bin;
+      }
+
+      let blob=new Blob([wasm_bytes]);
+      wasm_url=URL.createObjectURL(blob);
+      console.log(wasm_url);
+
+      SetWASMPath(wasm_url);
+
+      if(cnt==0)
+      {
+        cache_db.wasm_cache_table.put({
+          bin: await this.fetch_service.downloadURL("VIRELANG.wasm.gz"),
+        });
+      }
+
+      await LoadMainModule(this.getEditorContent(), "wasm32", async()=>{
+        this.readyForCompilation=isModuleLoaded();
       });
     }
 
-    this.readyForCompilation=moduleIsLoaded();
+    this.readyForCompilation=isModuleLoaded();
   }
 
   async compile(): Promise<void> {
@@ -69,17 +118,17 @@ export class EditorComponent implements OnInit {
     this.console_output="> Compiling Code\n";
     await this.initiateCompilation();
 
-    resetAPI(this.getEditorContent(), "wasm32");
-    await compileSourceCodeFromAPI();
+    ResetAPI(this.getEditorContent(), "wasm32");
+    await CompileSourceCode();
     
-    if(!isCompiled())
+    if(!is_compiled)
     {
       this.console_output+="> Could not compile code. Errors will be displayed here in further updates\n";
       return;
     }
 
-    let m=await instantiateOutputFromAPI();
-    
+    let m=await InstantiateCompiledOutput();
+
     this.console_output+="> Compiled to WASM, Calling main function...\n";
     const main_=m.instance.exports['_main'] as CallableFunction;
 
