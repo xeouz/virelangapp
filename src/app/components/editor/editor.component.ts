@@ -10,7 +10,7 @@ import 'brace';
 import 'brace/ext/language_tools';
 
 import { liveQuery } from 'dexie';
-import { gunzip } from 'zlib';
+import * as pako from 'pako'
 
 @Component({
   selector: 'app-editor',
@@ -26,8 +26,6 @@ export class EditorComponent implements OnInit {
   
   // Compilation Variables
   readyForCompilation: boolean = false;
-  wasm_url: string = "";
-  wasm_db: IDBOpenDBRequest = {} as IDBOpenDBRequest;
 
   @ViewChild("editor") private editor: ElementRef<HTMLElement> = {} as ElementRef;
 
@@ -66,44 +64,41 @@ export class EditorComponent implements OnInit {
     if(!isModuleLoaded())
     {
       // Try to load from IndexedDB Cache
-      await cache_db.wasm_cache_table.clear();
       let cnt=await cache_db.wasm_cache_table.count();
+
+      if(cnt>1)
+      {
+        cnt=0;
+        await cache_db.wasm_cache_table.clear();
+      }
       
-      let wasm_bytes: ArrayBuffer={} as ArrayBuffer;
+      let wasm_bytes_zipped: ArrayBuffer={} as ArrayBuffer;
       let wasm_url: string="";
       if(cnt==0)
       {
         // Fetch from Firebase Storage
         this.console_output+="> Fetching the Compiler from Firebase\n"
-        let wasm_bytes_zipped=await this.fetch_service.downloadURL("VIRELANG.wasm.gz");
-
-        gunzip(wasm_bytes_zipped, (errs, buff:ArrayBuffer)=>{
-          wasm_bytes=buff;
-        });
+        wasm_bytes_zipped=await this.fetch_service.downloadURL("VIRELANG.wasm.gz");
 
         await cache_db.wasm_cache_table.clear();
         await cache_db.wasm_cache_table.put({
-          bin: wasm_bytes,
+          bin: wasm_bytes_zipped,
         });
       }
       else
       {
-        let fetch_req=await cache_db.wasm_cache_table.get(0);
-        wasm_bytes=fetch_req!.bin;
+        this.console_output+="> Using cached compiler\n"
+        let fetch_req=await cache_db.wasm_cache_table.toArray();
+        console.log(fetch_req)
+        wasm_bytes_zipped=fetch_req[0].bin;
       }
 
-      let blob=new Blob([wasm_bytes]);
+      let wasm_bytes: Uint8Array;
+      wasm_bytes=pako.inflate(wasm_bytes_zipped);
+
+      let blob=new Blob([wasm_bytes], {type: "application/wasm"});
       wasm_url=URL.createObjectURL(blob);
-      console.log(wasm_url);
-
       SetWASMPath(wasm_url);
-
-      if(cnt==0)
-      {
-        cache_db.wasm_cache_table.put({
-          bin: await this.fetch_service.downloadURL("VIRELANG.wasm.gz"),
-        });
-      }
 
       await LoadMainModule(this.getEditorContent(), "wasm32", async()=>{
         this.readyForCompilation=isModuleLoaded();
@@ -127,6 +122,7 @@ export class EditorComponent implements OnInit {
       return;
     }
 
+    console.log(await getCompiledIR());
     let m=await InstantiateCompiledOutput();
 
     this.console_output+="> Compiled to WASM, Calling main function...\n";
