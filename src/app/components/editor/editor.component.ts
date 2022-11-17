@@ -1,9 +1,9 @@
-import { Component, OnInit, AfterViewInit, ElementRef, ViewChild } from '@angular/core';
+import { Component, OnInit, ElementRef, ViewChild } from '@angular/core';
 
-import { CompileSourceCode, getCompiledIR, InstantiateCompiledOutput, is_compiled, LoadMainModule, isModuleLoaded, ResetAPI, Module} from './vire-js/vire';
+import { CompileSourceCode, getCompiledIR, InstantiateCompiledOutput, is_compiled, LoadMainModule, isModuleLoaded, ResetAPI} from './vire-js/vire';
 import { WasmFetchService } from 'src/app/services/wasm-fetch.service';
 import { SetWASMPath } from './vire-js/vire-emcc';
-import { cache_db, WasmBinary } from './vire-js/cache-db'
+import { cache_db } from './vire-js/cache-db'
 
 import * as ace from "ace-builds";
 import 'brace';
@@ -63,8 +63,15 @@ export class EditorComponent implements OnInit {
   async initiateCompilation(): Promise<void> {
     if(!isModuleLoaded())
     {
+      SetWASMPath("assets/VIRELANG.wasm");
+      await LoadMainModule(this.getEditorContent(), "wasm32", async()=>{
+        this.readyForCompilation=isModuleLoaded();
+      });
+      return;
+
       // Try to load from IndexedDB Cache
       let cnt=await cache_db.wasm_cache_table.count();
+      console.log(cnt)
 
       if(cnt>1)
       {
@@ -122,7 +129,7 @@ export class EditorComponent implements OnInit {
       return;
     }
 
-    console.log(await getCompiledIR());
+    await console.log(getCompiledIR());
     let m=await InstantiateCompiledOutput();
 
     this.console_output+="> Compiled to WASM, Calling main function...\n";

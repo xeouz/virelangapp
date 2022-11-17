@@ -27,12 +27,15 @@ export function isModuleLoaded(): boolean {
         return false;
     }
 }
-export function resetModule(): void {
-    Module=undefined;
-    is_compiled=false;
+export function getCompiledIR(): Promise<string> {
+    return GlobalVireAPI.getCompiledLLVMIR();
 }
 export function ResetAPI(source_code: string="", target_triple: string = "wasm32"): void {
     GlobalVireAPI=Module.VireAPI.loadFromText(source_code, target_triple);
+    is_compiled=false;
+}
+export function ResetModule(): void {
+    Module=undefined;
     is_compiled=false;
 }
 
@@ -61,10 +64,6 @@ export async function CompileSourceCode(): Promise<void> {
 
     GlobalVireAPI.CompileSourceModule("", false);
     is_compiled=true;
-}
-
-export async function getCompiledIR(): Promise<string> {
-    return GlobalVireAPI.getCompiledLLVMIR();
 }
 
 export async function InstantiateCompiledOutput() :Promise<WebAssembly.WebAssemblyInstantiatedSource> {
