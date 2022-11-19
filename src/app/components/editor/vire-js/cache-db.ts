@@ -4,6 +4,7 @@ export interface WasmBinary
 {
     id?: number,
     bin: ArrayBuffer,
+    time_upload: string,
 }
 
 export class CacheDB extends Dexie
@@ -15,7 +16,7 @@ export class CacheDB extends Dexie
         super("CachedDatabase");
 
         this.version(1).stores({
-            wasm_cache_table: '++id, bin',
+            wasm_cache_table: '++id, bin, time_upload',
         })
     }
 }

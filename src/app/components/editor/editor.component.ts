@@ -63,41 +63,51 @@ export class EditorComponent implements OnInit {
   async initiateCompilation(): Promise<void> {
     if(!isModuleLoaded())
     {
-      SetWASMPath("assets/VIRELANG.wasm");
-      await LoadMainModule(this.getEditorContent(), "wasm32", async()=>{
-        this.readyForCompilation=isModuleLoaded();
-      });
-      return;
+      let file_name = "VIRELANG.wasm.gz";
+      let should_download = false;
 
-      // Try to load from IndexedDB Cache
-      let cnt=await cache_db.wasm_cache_table.count();
-      console.log(cnt)
+      //-- Try to load from IndexedDB Cache
 
+      // Check if wasm is present
+      let cnt = await cache_db.wasm_cache_table.count();
       if(cnt>1)
       {
-        cnt=0;
+        should_download=true;
         await cache_db.wasm_cache_table.clear();
+      }
+      else if(cnt==0)
+      {
+        should_download=true;
+      }
+
+      // Check if wasm present is outdated
+      let wasm_req = await cache_db.wasm_cache_table.get(0);
+      let wasm_time = (wasm_req==undefined)? "" : (wasm_req!.time_upload ?? "");
+      if(wasm_time != await this.fetch_service.getTimeOfUpload(file_name))
+      {
+        should_download=true;
       }
       
       let wasm_bytes_zipped: ArrayBuffer={} as ArrayBuffer;
       let wasm_url: string="";
-      if(cnt==0)
+      if(should_download)
       {
         // Fetch from Firebase Storage
         this.console_output+="> Fetching the Compiler from Firebase\n"
-        wasm_bytes_zipped=await this.fetch_service.downloadURL("VIRELANG.wasm.gz");
+        wasm_bytes_zipped=await this.fetch_service.downloadURL(file_name);
 
         await cache_db.wasm_cache_table.clear();
         await cache_db.wasm_cache_table.put({
+          id: 0,
           bin: wasm_bytes_zipped,
+          time_upload: await this.fetch_service.getTimeOfUpload(file_name),
         });
       }
       else
       {
         this.console_output+="> Using cached compiler\n"
-        let fetch_req=await cache_db.wasm_cache_table.toArray();
-        console.log(fetch_req)
-        wasm_bytes_zipped=fetch_req[0].bin;
+        let fetch_req=await cache_db.wasm_cache_table.get(0);
+        wasm_bytes_zipped=fetch_req!.bin;
       }
 
       let wasm_bytes: Uint8Array;
