@@ -24,7 +24,7 @@ export class WasmFetchService {
     this.gs_ref_filename=file_name;
   }
 
-  async getURL(file_name: string = "VIRELANG.wasm"): Promise<string>
+  async getURL(file_name: string): Promise<string>
   {
     this.getInternal(file_name);
     let url=await getDownloadURL(this.gs_ref);
@@ -32,7 +32,7 @@ export class WasmFetchService {
     return url;
   }
 
-  async getTimeOfUpload(file_name: string = "VIRELANG.wasm"): Promise<string>
+  async getTimeOfUpload(file_name: string): Promise<string>
   {
     this.getInternal(file_name);
 
@@ -40,11 +40,16 @@ export class WasmFetchService {
     return metadata.timeCreated;
   }
 
-  async downloadURL(file_name: string = "VIRELANG.wasm"): Promise<ArrayBuffer>
+  async downloadURL(file_name: string, js_file_name: string): Promise<[ArrayBuffer, string]>
   {
     this.getInternal(file_name);
     let bytes=await getBytes(this.gs_ref);
 
-    return bytes;
+    this.getInternal(js_file_name);
+    let js_bytes=await getBytes(this.gs_ref);
+    let dec=new TextDecoder("utf-8");
+    let js_str=dec.decode(new Uint8Array(js_bytes));
+
+    return [bytes, js_str];
   }
 }

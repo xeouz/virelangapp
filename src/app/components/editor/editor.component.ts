@@ -1,6 +1,6 @@
 import { Component, OnInit, ElementRef, ViewChild } from '@angular/core';
 
-import { CompileSourceCode, getCompiledIR, InstantiateCompiledOutput, is_compiled, LoadMainModule, isModuleLoaded, ResetAPI} from './vire-js/vire';
+import * as Vire from './vire-js/vire';
 import { WasmFetchService } from 'src/app/services/wasm-fetch.service';
 import { SetWASMPath } from './vire-js/vire-emcc';
 import { cache_db } from './vire-js/cache-db'
@@ -34,7 +34,6 @@ export class EditorComponent implements OnInit {
   constructor(private fetch_service: WasmFetchService) {  }
 
   ngOnInit() {
-    SetWASMPath('/');
     this.console_output="Click on the this Console to compile your Code";
   }
 
@@ -51,7 +50,7 @@ export class EditorComponent implements OnInit {
     this.aceEditor.setOptions({
       enableBasicAutocompletion: true,
       enableLiveAutocompletion: true,
-    })
+    });
   }
 
   getEditorContent(): string {
@@ -61,11 +60,11 @@ export class EditorComponent implements OnInit {
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // WebAssembly Loading and Compilation
   async initiateCompilation(): Promise<void> {
-    if(!isModuleLoaded())
+    if(!Vire.isModuleLoaded())
     {
       let file_name = "VIRELANG.wasm.gz";
+      let js_file_name = "VIRELANG.js"
       let should_download = false;
-
       //-- Try to load from IndexedDB Cache
 
       // Check if wasm is present
@@ -89,17 +88,20 @@ export class EditorComponent implements OnInit {
       }
       
       let wasm_bytes_zipped: ArrayBuffer={} as ArrayBuffer;
+      let wasm_js: string;
       let wasm_url: string="";
+      let wasm_js_url: string="";
       if(should_download)
       {
         // Fetch from Firebase Storage
-        this.console_output+="> Fetching the Compiler from Firebase\n"
-        wasm_bytes_zipped=await this.fetch_service.downloadURL(file_name);
+        this.console_output+="> Fetching the Compiler from Firebase\n";
+        [wasm_bytes_zipped, wasm_js]=await this.fetch_service.downloadURL(file_name, js_file_name);
 
         await cache_db.wasm_cache_table.clear();
         await cache_db.wasm_cache_table.put({
           id: 0,
           bin: wasm_bytes_zipped,
+          js: wasm_js,
           time_upload: await this.fetch_service.getTimeOfUpload(file_name),
         });
       }
@@ -108,21 +110,24 @@ export class EditorComponent implements OnInit {
         this.console_output+="> Using cached compiler\n"
         let fetch_req=await cache_db.wasm_cache_table.get(0);
         wasm_bytes_zipped=fetch_req!.bin;
+        wasm_js=fetch_req!.js;
       }
 
       let wasm_bytes: Uint8Array;
       wasm_bytes=pako.inflate(wasm_bytes_zipped);
 
-      let blob=new Blob([wasm_bytes], {type: "application/wasm"});
-      wasm_url=URL.createObjectURL(blob);
+      wasm_url=URL.createObjectURL(new Blob([wasm_bytes], {type: "application/wasm"}));
+      wasm_js_url=URL.createObjectURL(new Blob([wasm_js], {type: "text/javascript"}));
+      
+      await Vire.ReloadJS(wasm_js_url);
       SetWASMPath(wasm_url);
 
-      await LoadMainModule(this.getEditorContent(), "wasm32", async()=>{
-        this.readyForCompilation=isModuleLoaded();
+      await Vire.LoadMainModule(this.getEditorContent(), "wasm32", wasm_js_url, async()=>{
+        this.readyForCompilation=Vire.isModuleLoaded();
       });
     }
 
-    this.readyForCompilation=isModuleLoaded();
+    this.readyForCompilation=Vire.isModuleLoaded();
   }
 
   async compile(): Promise<void> {
@@ -130,17 +135,17 @@ export class EditorComponent implements OnInit {
     this.console_output="> Compiling Code\n";
     await this.initiateCompilation();
 
-    ResetAPI(this.getEditorContent(), "wasm32");
-    await CompileSourceCode();
+    Vire.ResetAPI(this.getEditorContent(), "wasm32");
+    await Vire.CompileSourceCode();
     
-    if(!is_compiled)
+    if(!Vire.is_compiled)
     {
       this.console_output+="> Could not compile code. Errors will be displayed here in further updates\n";
       return;
     }
 
-    await console.log(getCompiledIR());
-    let m=await InstantiateCompiledOutput();
+    await console.log(Vire.getCompiledIR());
+    let m=await Vire.InstantiateCompiledOutput();
 
     this.console_output+="> Compiled to WASM, Calling main function...\n";
     const main_=m.instance.exports['_main'] as CallableFunction;

@@ -1,8 +1,9 @@
-import { instantiateGlobalModule, SetWASMPath } from "./vire-emcc"
+import { instantiateGlobalModule, SetWASMPath, dynamicallyImportJS } from "./vire-emcc"
 
 export let Module: any;
 export let GlobalVireAPI: any;
 export let is_compiled: boolean = false;
+export let is_js_loaded: boolean = false;
 
 const importObject:WebAssembly.Imports = {
     env:{
@@ -39,7 +40,18 @@ export function ResetModule(): void {
     is_compiled=false;
 }
 
-export async function LoadMainModule(input_code:string = "", target_triple:string = "wasm32", _async_callback:Function = ()=>{},) {
+export async function ReloadJS(file_name: string = "./VIRELANG.js")
+{
+    await dynamicallyImportJS(file_name);
+    is_js_loaded=true;
+}
+
+export async function LoadMainModule(input_code:string = "", target_triple:string = "wasm32", js_file_name:string = "./VIRELANG.js", _async_callback:Function = ()=>{},) {
+    if(!is_js_loaded)
+    {
+        await ReloadJS(js_file_name);
+    }
+    
     Module=await instantiateGlobalModule();
     GlobalVireAPI=Module.VireAPI.loadFromText(input_code, target_triple);
 
