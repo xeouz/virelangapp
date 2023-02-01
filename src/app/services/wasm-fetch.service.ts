@@ -24,9 +24,25 @@ export class WasmFetchService {
     this.gs_ref_filename=file_name;
   }
 
+  async checkConnection(file_name: string): Promise<boolean>
+  {
+    await this.getInternal(file_name);
+
+    try
+    {
+      let bytes=await getBytes(this.gs_ref, 1);
+    }
+    catch(err)
+    {
+      return false;
+    }
+
+    return true;
+  }
+
   async getURL(file_name: string): Promise<string>
   {
-    this.getInternal(file_name);
+    await this.getInternal(file_name);
     let url=await getDownloadURL(this.gs_ref);
 
     return url;
@@ -34,7 +50,7 @@ export class WasmFetchService {
 
   async getTimeOfUpload(file_name: string): Promise<string>
   {
-    this.getInternal(file_name);
+    await this.getInternal(file_name);
 
     let metadata=await getMetadata(this.gs_ref);
     return metadata.timeCreated;
@@ -42,7 +58,7 @@ export class WasmFetchService {
 
   async downloadURL(file_name: string, js_file_name: string): Promise<[ArrayBuffer, string]>
   {
-    this.getInternal(file_name);
+    await this.getInternal(file_name);
     let bytes=await getBytes(this.gs_ref);
 
     this.getInternal(js_file_name);

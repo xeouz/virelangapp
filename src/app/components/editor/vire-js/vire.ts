@@ -74,7 +74,7 @@ export async function CompileSourceCode(): Promise<void> {
         return;
     }
 
-    GlobalVireAPI.CompileSourceModule("", false);
+    GlobalVireAPI.CompileSourceModule("", false, "O0", false);
     is_compiled=true;
 }
 

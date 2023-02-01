@@ -1,4 +1,4 @@
-import { Component, OnInit, ElementRef, ViewChild } from '@angular/core';
+import { Component, OnInit, ElementRef, ViewChild, ApplicationInitStatus } from '@angular/core';
 
 import * as Vire from './vire-js/vire';
 import { WasmFetchService } from 'src/app/services/wasm-fetch.service';
@@ -11,6 +11,8 @@ import 'brace/ext/language_tools';
 
 import { liveQuery } from 'dexie';
 import * as pako from 'pako'
+import { environment } from 'src/environments/environment';
+import { env } from 'process';
 
 @Component({
   selector: 'app-editor',
@@ -59,6 +61,11 @@ export class EditorComponent implements OnInit {
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // WebAssembly Loading and Compilation
+  async isOnline () : Promise<boolean>
+  {
+    return await this.fetch_service.checkConnection("VIRELANG.wasm.gz");
+  }
+
   async initiateCompilation(): Promise<void> {
     if(!Vire.isModuleLoaded())
     {
@@ -78,13 +85,19 @@ export class EditorComponent implements OnInit {
       {
         should_download=true;
       }
-
-      // Check if wasm present is outdated
-      let wasm_req = await cache_db.wasm_cache_table.get(0);
-      let wasm_time = (wasm_req==undefined)? "" : (wasm_req!.time_upload ?? "");
-      if(wasm_time != await this.fetch_service.getTimeOfUpload(file_name))
+      
+      if(await this.isOnline())
       {
-        should_download=true;
+        let wasm_req = await cache_db.wasm_cache_table.get(0);
+        let wasm_time = (wasm_req==undefined)? "" : (wasm_req!.time_upload ?? "");
+        if(wasm_time != await this.fetch_service.getTimeOfUpload(file_name))
+        {
+          should_download=true;
+        }
+      }
+      else
+      {
+        should_download=false;
       }
       
       let wasm_bytes_zipped: ArrayBuffer={} as ArrayBuffer;
